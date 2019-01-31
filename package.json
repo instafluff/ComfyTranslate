@@ -1,0 +1,23 @@
+{
+  "name": "comfy-translate",
+  "version": "1.0.0",
+  "description": "Translate with caching and censor naughty words using Yandex or AWS Translate!",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/instafluff/ComfyTranslate.git"
+  },
+  "author": "Instafluff",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/instafluff/ComfyTranslate/issues"
+  },
+  "homepage": "https://github.com/instafluff/ComfyTranslate#readme",
+  "dependencies": {
+    "node-storage": "0.0.7",
+    "request": "^2.88.0"
+  }
+}
