@@ -9,7 +9,7 @@ const maxCachedMessageLength = 64;
 const memTranslations = [];
 const memLimit = 1000;
 
-function translate( opts ) {
+function create( opts ) {
   switch( opts[ "api" ] || "Yandex" ) {
     case "Yandex":
       let apiKey = opts[ "apiKey" ];
@@ -95,5 +95,5 @@ function sendTranslatedMessage( error, translatedMessage, fromLanguage, toLangua
 }
 
 module.exports = {
-  translate
+  create
 }
