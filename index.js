@@ -1,61 +1,25 @@
-const fs = require( 'fs' );
 const request = require( 'request' );
+const fs = require( 'fs' );
 const Storage = require( 'node-storage' );
 const translations = new Storage( "translations.db" );
+const Censor = require( "./censor" );
+const Translator = require( "./translator" );
 
 const maxCachedMessageLength = 64;
 const memTranslations = [];
 const memLimit = 1000;
 
-const naughtylist = fs.readFileSync( "facebook-bad-words-list_comma-separated-text-file_2018_07_29.txt", "utf8" )
-  .split( ", " ).filter( Boolean );
+function translate( opts ) {
+  switch( opts[ "api" ] || "Yandex" ) {
+    case "Yandex":
+      let apiKey = opts[ "apiKey" ];
+      if( !apiKey ) { throw new Error( "API key is required" ); }
 
-const naughtyRegexList = naughtylist
-  .map( word => new RegExp( `\\b${ word }\\b`, "gi" ) )
-const globalblacklist = fs.readFileSync( "blacklist.txt", "utf8" ).split( /\r?\n/ )
-  .filter( Boolean )
-  .map( word => new RegExp( `\\b${ word }\\b`, "gi" ) );
-const CENSORED = "[censored]";
-console.log( globalblacklist );
-
-function naughtyToNice( text ) {
-  return naughtyRegexList.reduce(
-    ( string, regex ) => string.replace( regex, CENSORED ),
-    text
-  )
-}
-
-function containsNaughtyWord( text ) {
-  return naughtylist.some( x => text.includes( x ) );
-}
-
-function hasBlacklistedWord( string ) {
-  return globalblacklist.some( regex => regex.test( string ) )
-}
-
-function translate( message, language, callback, censored = true ) {
-  // Blacklist filtering
-  if( hasBlacklistedWord( message ) ) return;
-
-  const resp = message.length < maxCachedMessageLength
-    ? translations.get( message ) || undefined
-    : memTranslations.find( translation => translation.message == message )
-
-  if( resp && resp[ language ] ) {
-    var text = resp.text[ 0 ] || "";
-    // Censoring
-    if( censored ) {
-      text = naughtyToNice( text );
-    }
-    callback( null, text, resp.lang, language );
-  }
-  else {
-    translateYandex( {
-      apiKey: process.env.YANDEX_KEY,
-      message,
-      language,
-      callback
-    });
+      return ( message, language, callback, censored = true ) => {
+        callTranslator( "Yandex", apiKey, message, language, callback, censored );
+      };
+    default:
+      throw new Error( "Unsupported API" );
   }
 }
 
@@ -67,73 +31,69 @@ function translate( message, language, callback, censored = true ) {
  * @param {String|void} language_response
  * @param {String|void} language_target
  */
-
-/**
- * Calls translator
- *
- * @param {Object} options
- * @param {String} options.apiKey API key used for contacting Yandex
- * @param {String} options.message the message to be translate
- * @param {String} options.language The desired language
- * @param {Boolean=true} options.censored Option to toggle censoring off
- * @param {TranslateCallback} options.callback
- *
- * @return void
- */
-function translateYandex( opts ) {
-  const {
-    apiKey,
-    message,
-    language,
-    callback,
-    censored = true,
-  } = opts || {};
-
-  if( !apiKey ) {
-    throw new Error("Translate module not given API key")
+function callTranslator( api, credentials, message, language, callback, censored ) {
+  // Blacklist filtering
+  if( Censor.hasBlacklistedWord( message ) ) {
+    callback( "Blacklisted Word", null, null, language );
+    return;
   }
 
-  request.get(
-    "https://translate.yandex.net/api/v1.5/tr.json/translate?key=" + apiKey + "&lang=" + language + "&text=" + encodeURI( message ),
-    ( err, res, body ) => {
-      // Error handling
-      if( err ) {
-        callback( "Error in translation request:" + err, "", "", "" );
+  // Check Cache
+  const resp = message.length < maxCachedMessageLength
+    ? translations.get( message ) || undefined
+    : memTranslations.find( translation => translation.message == message )
+
+  if( resp && resp[ language ] ) {
+    // Found in cache
+    var text = resp[ language ];
+    // Censoring
+    if( censored ) {
+      text = Censor.naughtyToNice( text );
+    }
+    callback( null, text, resp.lang, language );
+  }
+  else {
+    switch( api ) {
+      case "Yandex":
+        Translator.YandexTranslate( credentials, message, language, ( error, translatedMessage, fromLanguage, toLanguage ) => {
+          sendTranslatedMessage( error, translatedMessage, fromLanguage, toLanguage, callback );
+        } );
+        break;
+    }
+  }
+}
+
+function sendTranslatedMessage( error, translatedMessage, fromLanguage, toLanguage, callback ) {
+  if( error ) {
+    callback( error, null, null, toLanguage );
+  }
+  else {
+    var text = translatedMessage;
+    // Censoring
+    if( censored ) {
+      text = Censor.naughtyToNice( text );
+    }
+    callback( error, text, fromLanguage, toLanguage );
+    // Cache translation
+    if( message.length < maxCachedMessageLength ) {
+      let translation = translations.get( message ) || {};
+      translation.lang = fromLanguage;
+      translation[ language ] = translatedMessage;
+      translations.put( message, translation );
+    }
+    else {
+      if( memTranslations.length >= memLimit ) {
+        memTranslations.splice( 0, 1 );
       }
-      try {
-        const resp = JSON.parse( body );
-        if( resp && resp.lang ) {
-          var text = resp.text[ 0 ] || "";
-          // Censoring
-          if( censored ) {
-            text = naughtyToNice( text );
-          }
-          callback( null, text, resp.lang, language );
-          // Cache translation
-          if( message.length < maxCachedMessageLength ) {
-            const translation = translations.get( message ) || {};
-            translation[ language ] = resp;
-            translations.put( message, translation );
-          }
-          else {
-            if( memTranslations.length >= memLimit ) {
-              memTranslations.splice( 0, 1 );
-            }
-            memTranslations.push( {
-              message: message,
-              [ language ]: resp
-            } );
-          }
-        }
-      } catch( e ) {
-        console.log( e );
-      }
-    } );
+      memTranslations.push( {
+        message: message,
+        lang: fromLanguage,
+        [ language ]: translatedMessage
+      } );
+    }
+  }
 }
 
 module.exports = {
-  naughtyToNice,
-  containsNaughtyWord,
-  hasBlacklistedWord,
   translate
 }
