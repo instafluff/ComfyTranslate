@@ -56,14 +56,14 @@ function callTranslator( api, credentials, message, language, callback, censored
     switch( api ) {
       case "Yandex":
         Translator.YandexTranslate( credentials, message, language, ( error, translatedMessage, fromLanguage, toLanguage ) => {
-          sendTranslatedMessage( error, translatedMessage, fromLanguage, toLanguage, callback );
+          sendTranslatedMessage( error, message, translatedMessage, fromLanguage, toLanguage, censored, callback );
         } );
         break;
     }
   }
 }
 
-function sendTranslatedMessage( error, translatedMessage, fromLanguage, toLanguage, callback ) {
+function sendTranslatedMessage( error, message, translatedMessage, fromLanguage, toLanguage, censored, callback ) {
   if( error ) {
     callback( error, null, null, toLanguage );
   }
@@ -78,7 +78,7 @@ function sendTranslatedMessage( error, translatedMessage, fromLanguage, toLangua
     if( message.length < maxCachedMessageLength ) {
       let translation = translations.get( message ) || {};
       translation.lang = fromLanguage;
-      translation[ language ] = translatedMessage;
+      translation[ toLanguage ] = translatedMessage;
       translations.put( message, translation );
     }
     else {
@@ -88,7 +88,7 @@ function sendTranslatedMessage( error, translatedMessage, fromLanguage, toLangua
       memTranslations.push( {
         message: message,
         lang: fromLanguage,
-        [ language ]: translatedMessage
+        [ toLanguage ]: translatedMessage
       } );
     }
   }
