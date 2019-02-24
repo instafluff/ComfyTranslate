@@ -11,6 +11,16 @@ const memLimit = 1000;
 
 function create( opts ) {
   switch( opts[ "api" ] || "Yandex" ) {
+    case "AWS":
+      let accessKeyId = opts[ "access" ];
+      let secretAccessKey = opts[ "secret" ];
+      if( !accessKeyId ) { throw new Error( "access is required" ); }
+      if( !secretAccessKey ) { throw new Error( "secret is required" ); }
+      translations = new Storage( "aws.db" );
+
+      return ( message, language, callback, censored = true ) => {
+        callTranslator( "AWS", { accessKeyId, secretAccessKey }, message, language, callback, censored );
+      };
     case "Yandex":
       let apiKey = opts[ "apiKey" ];
       if( !apiKey ) { throw new Error( "API key is required" ); }
@@ -55,6 +65,11 @@ function callTranslator( api, credentials, message, language, callback, censored
   }
   else {
     switch( api ) {
+      case "AWS":
+        Translator.AWSTranslate( credentials.accessKeyId, credentials.secretAccessKey, message, language, ( error, translatedMessage, fromLanguage, toLanguage ) => {
+          sendTranslatedMessage( error, message, translatedMessage, fromLanguage, toLanguage, censored, callback );
+        } );
+        break;
       case "Yandex":
         Translator.YandexTranslate( credentials, message, language, ( error, translatedMessage, fromLanguage, toLanguage ) => {
           sendTranslatedMessage( error, message, translatedMessage, fromLanguage, toLanguage, censored, callback );
