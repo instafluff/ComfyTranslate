@@ -1,9 +1,9 @@
 const request = require( 'request' );
 const fs = require( 'fs' );
 const Storage = require( 'node-storage' );
-const translations = new Storage( "translations.db" );
 const Censor = require( "./censor" );
 const Translator = require( "./translator" );
+var translations = undefined;
 
 const maxCachedMessageLength = 64;
 const memTranslations = [];
@@ -14,6 +14,7 @@ function create( opts ) {
     case "Yandex":
       let apiKey = opts[ "apiKey" ];
       if( !apiKey ) { throw new Error( "API key is required" ); }
+      translations = new Storage( "yandex.db" );
 
       return ( message, language, callback, censored = true ) => {
         callTranslator( "Yandex", apiKey, message, language, callback, censored );
