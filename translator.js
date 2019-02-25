@@ -18,7 +18,7 @@ function AWSTranslate( accessKeyId, secretAccessKey, message, language, callback
     TerminologyNames: [] // Add emote names in here
   }, ( err, data ) => {
     // Error handling
-    if( err ) { callback( err, message, null, language ); }
+    if( err ) { callback( err, message, null, language ); return; }
 
     try {
       callback( null, data.TranslatedText, data.SourceLanguageCode, language );
@@ -48,7 +48,7 @@ function YandexTranslate( apiKey, message, language, callback ) {
     `https://translate.yandex.net/api/v1.5/tr.json/translate?key=${apiKey}&lang=${language}&text=${encodeURI( message )}`,
     ( err, res, body ) => {
       // Error handling
-      if( err ) { callback( err, message, null, language ); }
+      if( err ) { callback( err, message, null, language ); return; }
 
       try {
         const resp = JSON.parse( body );
