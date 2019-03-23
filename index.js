@@ -18,16 +18,16 @@ function create( opts ) {
       if( !secretAccessKey ) { throw new Error( "secret is required" ); }
       translations = new Storage( "aws.db" );
 
-      return ( message, language, callback, censored = true ) => {
-        callTranslator( "AWS", { accessKeyId, secretAccessKey }, message, language, callback, censored );
+      return ( message, fromLang, toLang, callback, censored = true ) => {
+        callTranslator( "AWS", { accessKeyId, secretAccessKey }, message, fromLang, toLang, callback, censored );
       };
     case "Yandex":
       let apiKey = opts[ "apiKey" ];
       if( !apiKey ) { throw new Error( "API key is required" ); }
       translations = new Storage( "yandex.db" );
 
-      return ( message, language, callback, censored = true ) => {
-        callTranslator( "Yandex", apiKey, message, language, callback, censored );
+      return ( message, fromLang, toLang, callback, censored = true ) => {
+        callTranslator( "Yandex", apiKey, message, fromLang, toLang, callback, censored );
       };
     default:
       throw new Error( "Unsupported API" );
