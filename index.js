@@ -42,10 +42,10 @@ function create( opts ) {
  * @param {String|void} language_response
  * @param {String|void} language_target
  */
-function callTranslator( api, credentials, message, language, callback, censored ) {
+function callTranslator( api, credentials, message, fromLang, toLang, callback, censored ) {
   // Blacklist filtering
   if( Censor.hasBlacklistedWord( message ) ) {
-    callback( "Blacklisted Word", null, null, language );
+    callback( "Blacklisted Word", null, null, toLang );
     return;
   }
 
@@ -54,24 +54,24 @@ function callTranslator( api, credentials, message, language, callback, censored
     ? translations.get( message ) || undefined
     : memTranslations.find( translation => translation.message == message )
 
-  if( resp && resp[ language ] ) {
+  if( resp && resp[ toLang ] ) {
     // Found in cache
-    var text = resp[ language ];
+    var text = resp[ toLang ];
     // Censoring
     if( censored ) {
       text = Censor.naughtyToNice( text );
     }
-    callback( null, text, resp.lang, language );
+    callback( null, text, resp.lang, toLang );
   }
   else {
     switch( api ) {
       case "AWS":
-        Translator.AWSTranslate( credentials.accessKeyId, credentials.secretAccessKey, message, language, ( error, translatedMessage, fromLanguage, toLanguage ) => {
+        Translator.AWSTranslate( credentials.accessKeyId, credentials.secretAccessKey, message, fromLang, toLang, ( error, translatedMessage, fromLanguage, toLanguage ) => {
           sendTranslatedMessage( error, message, translatedMessage, fromLanguage, toLanguage, censored, callback );
         } );
         break;
       case "Yandex":
-        Translator.YandexTranslate( credentials, message, language, ( error, translatedMessage, fromLanguage, toLanguage ) => {
+        Translator.YandexTranslate( credentials, message, fromLang, toLang, ( error, translatedMessage, fromLanguage, toLanguage ) => {
           sendTranslatedMessage( error, message, translatedMessage, fromLanguage, toLanguage, censored, callback );
         } );
         break;
