@@ -1,6 +1,6 @@
 {
   "name": "comfy-translate",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Translate with caching and censor naughty words using Yandex or AWS Translate!",
   "main": "index.js",
   "scripts": {
